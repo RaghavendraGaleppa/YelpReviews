@@ -1,6 +1,12 @@
 import re
 import numpy as np
+import pandas as pd
 import string
+from collections import Counter
+
+from torch.utils.data import Dataset
+from torch.utils.data import DataLoader
+
 
 def preprocess_text(text):
 	"""
@@ -12,6 +18,14 @@ def preprocess_text(text):
 	text = re.sub(r"([.,!?])", r" \1 ", text)
 	text = re.sub(r"[^a-zA-Z.,!?]+", r" ", text)
 	return text
+
+def preprocess_df(review_df):
+	"""
+		-Prerpocess the dataframe
+		args:
+			review_df(pd.DataFrame): The Review DataFrame
+	"""
+	pass
 
 def convert_stars(stars):
 	"""
@@ -163,3 +177,107 @@ class Vectorizer(object):
 				vector[index] = 1
 		return vector
 
+
+	@classmethod
+	def from_dataframe(cls, review_df, cutoff=25):
+		"""
+			- Return a class object created using the dataframe
+			- Assuming that the review_df is already preprocessed
+
+			args:
+				cls: Class Vectorizer
+				review_df(pd.DataFrame) : The dataframe that needs to be vectorized
+				cutoff(int): The minimum count a word needs to make it into the Vocabulary. 
+				All other words with count less than cutoff will be marked as unknow tokens
+			returns:
+				vector(ReviewVectorize): An instance of ReviewVectorizer class
+		"""
+		review_vocab = Vocabulary(add_unk=True)
+		rating_vocab = Vocabulary(add_unk=False)
+
+		word_counts = Counter()
+		for review in review_df.review.tolist():
+			for token in review.split(" "):
+				word_counts[token] += 1
+
+		# Add ratings to rating vocabulary
+		for rating in review_df.ratings.unique().tolist():
+			rating_vocab.add_token(rating)
+
+		# Add tokens to review vocabulary
+		for token in word_counts:
+			if word_counts[token] > cutoff:
+				index = review_vocab.add_token(token)
+
+		return cls(review_vocab, rating_vocab)
+
+class ReviewDataset(Dataset):
+
+	def __init__(self, review_df, vectorizer):
+		"""
+			args:
+				review_df(pd.DataFrame): The dataframe for reviews which has already been vectorized
+				vectorizer(ReviewVectorizer): The vectorizer instance that has been initialized with 
+				the given dataframe.
+		"""
+
+		self.review_df = review_df
+		self._vectorizer = vectorizer
+
+		self.train_df = self.review_df[self.review_df.split == 'train']
+		self.train_size = len(self.train_df)
+
+		self.valid_df = self.review_df[self.review_df.split == 'valid']
+		self.valid_size = len(self.valid_df)
+
+		self.test_df = self.review_df[self.review_df.split == 'test']
+		self.test_size = len(self.test_df)
+
+		self._lookup_dict = {'train': (self.train_df, self.train_size),
+							'valid': (self.valid_df, self.valid_size),
+							'test': (self.test_df, self.test_size),
+							}
+
+		self.set_split('train')
+
+	def get_vectorize(self):
+		return self._vectorizer
+
+	def set_split(self, split="train"):
+		self._target_split = split
+		self._target_df, self._target_size = self._lookup_dict[split]
+
+	def __len__(self):
+		return self._target_size
+
+	def __getitem__(self, index):
+
+		row = self._target_df.iloc[index]
+		review_vector = self._vectorizer.vectorize(row.review)
+		rating_vector = self._vectorizer.rating_vocab.lookup_token(row.ratings)
+
+		return {'x_data': review_vector, 'y_target': rating_vector}
+
+	def num_batches(self, batch_size):
+		"""
+			- Given the batch_size return how many batches can you create from the dataset
+		"""
+
+		return len(self) // batch_size
+
+def generate_batches(dataset, batch_size, shuffle=True, drop_last=True,
+		device="cpu"):
+	"""
+		A Generator function that wraps the Pytorch DataLoader class. 
+	"""
+
+	dataloader = DataLoader(dataset, batch_size=batch_size, 
+			shuffle=shuffle, drop_last=drop_last)
+
+
+	for data_dict in dataloader:
+		out_data_dict = {}
+		for name, tensor in data_dict:
+			out_data_dict[name] = data_dict[name].to(device)
+
+		yield out_data_dict
