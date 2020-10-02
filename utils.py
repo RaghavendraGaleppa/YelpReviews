@@ -1,4 +1,6 @@
 import re
+import numpy as np
+import string
 
 def preprocess_text(text):
 	"""
@@ -10,6 +12,20 @@ def preprocess_text(text):
 	text = re.sub(r"([.,!?])", r" \1 ", text)
 	text = re.sub(r"[^a-zA-Z.,!?]+", r" ", text)
 	return text
+
+def convert_stars(stars):
+	"""
+		- Takes a ratings and converts it into either positive or negative rating
+		args:
+			stars(int): The stars that restaurant recieved
+		returns
+			rating(str): Returs rating for that stars, either positive or negative
+	"""
+	
+	if stars > 2:
+		return 'positive'
+	else:
+		return 'negative'
 
 class Vocabulary(object):
 	"""
@@ -106,3 +122,44 @@ class Vocabulary(object):
 
 	def __len__(self):
 		return len(self._token_to_idx)
+
+
+class Vectorizer(object):
+	"""
+		- This class will be used to iterate through each token in an input data point into its integer form. The result
+		will be a vector.
+
+		- Since many input data points will be combined to create a mini batch, the length of each vector produced by
+		by this class should be of same length.
+
+		- To keep things simple we will use one-hot encoding as the method for vecotrization. The disadvantage is that, 
+		the vector will be very sparse and the order in which words occur in the sentence will not be stored.
+		
+	"""
+
+	def __init__(self, review_vocab, rating_vocab):
+		"""
+			args:
+				review_vocab: maps words to integers
+				rating_vocab: maps stars to class labels
+		"""
+		self.review_vocab = review_vocab
+		self.rating_vocab = rating_vocab
+
+
+	def vectorize(self,review):
+		"""
+			- Given a token, convert it into its one-hot encoding form
+			args:
+				review(str): The correspoding review 
+			returns:
+				vector(ndarray): The one-hot representation of that review
+		"""
+		vector = np.zeros(shape=(len(self.review_vocab),), dtype=np.float32)
+
+		for token in review.split(" "):
+			if token not in string.punctuation:
+				index = self.review_vocab.lookup_token(token)
+				vector[index] = 1
+		return vector
+
