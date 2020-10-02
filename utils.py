@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import string
 from collections import Counter
+from collections import defaultdict
 
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
@@ -19,14 +20,6 @@ def preprocess_text(text):
 	text = re.sub(r"[^a-zA-Z.,!?]+", r" ", text)
 	return text
 
-def preprocess_df(review_df):
-	"""
-		-Prerpocess the dataframe
-		args:
-			review_df(pd.DataFrame): The Review DataFrame
-	"""
-	pass
-
 def convert_stars(stars):
 	"""
 		- Takes a ratings and converts it into either positive or negative rating
@@ -40,6 +33,54 @@ def convert_stars(stars):
 		return 'positive'
 	else:
 		return 'negative'
+
+def create_and_load_data(args):
+	"""
+		- Creates a dataFrame, preprocesses and loads it. Also splits the data in train, test and valid
+		args:
+			args(ArgumentParser): An argmument parser, which should contain an attribute 
+			called data_path that holds the location of the csv
+		returns:
+			final_reviews(pd.DataFrame): The preprocessed and splitted dataframe
+	"""
+	review_df = pd.read_csv(args.data_path)
+	if 'stars' in review_df.columns:
+		review_df.stars = review_df.stars.apply(convert_stars)
+		review_df = review_df.rename(columns={'stars':'ratings'})
+	if 'text' in review_df.columns:
+		review_df = review_df.rename(columns={'text':'review'})
+
+	by_ratings = defaultdict(list)
+	for row_index, row in review_df.iterrows():
+		by_ratings[row.ratings].append(row.to_dict())
+
+	final_list = []
+	np.random.seed(args.seed)
+
+	for ratings, item_list in by_ratings.items():
+		np.random.shuffle(item_list)	
+
+		n_total = len(item_list)
+		n_train = int(args.train_percent * n_total)
+		n_valid = int(args.valid_percent * n_total)
+		n_test = int(args.test_percent * n_total)
+		
+		for item in item_list[:n_train]:
+			item['split'] = 'train'
+
+		for item in item_list[n_train:n_train+n_valid]:
+			item['split'] = 'valid'
+
+		for item in item_list[n_train+n_valid:n_total]:
+			item['split'] = 'test'
+
+		final_list.extend(item_list)
+
+	# Preprocess the reviews
+	final_reviews = pd.DataFrame(final_list)
+	final_reviews.review = final_reviews.review.apply(preprocess_text)
+
+	return final_reviews
 
 class Vocabulary(object):
 	"""
@@ -190,7 +231,7 @@ class Vectorizer(object):
 				cutoff(int): The minimum count a word needs to make it into the Vocabulary. 
 				All other words with count less than cutoff will be marked as unknow tokens
 			returns:
-				vector(ReviewVectorize): An instance of ReviewVectorizer class
+				vector(Vectorizer): An instance of Vectorizer class
 		"""
 		review_vocab = Vocabulary(add_unk=True)
 		rating_vocab = Vocabulary(add_unk=False)
@@ -212,12 +253,11 @@ class Vectorizer(object):
 		return cls(review_vocab, rating_vocab)
 
 class ReviewDataset(Dataset):
-
 	def __init__(self, review_df, vectorizer):
 		"""
 			args:
 				review_df(pd.DataFrame): The dataframe for reviews which has already been vectorized
-				vectorizer(ReviewVectorizer): The vectorizer instance that has been initialized with 
+				vectorizer(Vectorizer): The vectorizer instance that has been initialized with 
 				the given dataframe.
 		"""
 
@@ -251,7 +291,6 @@ class ReviewDataset(Dataset):
 		return self._target_size
 
 	def __getitem__(self, index):
-
 		row = self._target_df.iloc[index]
 		review_vector = self._vectorizer.vectorize(row.review)
 		rating_vector = self._vectorizer.rating_vocab.lookup_token(row.ratings)
@@ -265,8 +304,13 @@ class ReviewDataset(Dataset):
 
 		return len(self) // batch_size
 
-def generate_batches(dataset, batch_size, shuffle=True, drop_last=True,
-		device="cpu"):
+	@classmethod
+	def create_and_make_dataset(cls, args):
+		review_df = create_and_load_data(args)
+		vectorizer = Vectorizer.from_dataframe(review_df)
+		return cls(review_df, vectorizer)
+
+def generate_batches(dataset, batch_size, shuffle=True, drop_last=True, device="cpu"):
 	"""
 		A Generator function that wraps the Pytorch DataLoader class. 
 	"""
