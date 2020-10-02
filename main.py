@@ -6,6 +6,7 @@ import collections
 from tqdm import tqdm
 
 from utils import preprocess_text
+from utils import convert_stars
 
 # Create an argument parser
 parser = argparse.ArgumentParser()
@@ -44,16 +45,24 @@ print(args)
 # Loading the data
 reviews_dataset = pd.read_csv(args.data_path)
 
+# Change the ratings of the dataset
+reviews_dataset.stars = reviews_dataset.stars.apply(convert_stars)
+
+# Rename the stars and text column to ratings and review respectively
+reviews_dataset = reviews_dataset.rename(columns={'stars':'ratings', 'text':'review'})
+
+print(reviews_dataset.columns)
+
 # Splitting the dataset into train, valid and test
 by_ratings = collections.defaultdict(list)
 for row_index, row in reviews_dataset.iterrows():
-	by_ratings[row.stars].append(row.to_dict())
+	by_ratings[row.ratings].append(row.to_dict())
 
 
 final_list = []
 np.random.seed(args.seed)
 
-for stars, item_list in by_ratings.items():
+for ratings, item_list in by_ratings.items():
 	np.random.shuffle(item_list)	
 
 	n_total = len(item_list)
@@ -72,5 +81,6 @@ for stars, item_list in by_ratings.items():
 
 	final_list.extend(item_list)
 
+# Preprocess the reviews
 final_reviews = pd.DataFrame(final_list)
 final_reviews.review = final_reviews.review.apply(preprocess_text)
