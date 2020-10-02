@@ -51,7 +51,6 @@ reviews_dataset.stars = reviews_dataset.stars.apply(convert_stars)
 # Rename the stars and text column to ratings and review respectively
 reviews_dataset = reviews_dataset.rename(columns={'stars':'ratings', 'text':'review'})
 
-print(reviews_dataset.columns)
 
 # Splitting the dataset into train, valid and test
 by_ratings = collections.defaultdict(list)
