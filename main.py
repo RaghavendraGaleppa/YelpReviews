@@ -37,25 +37,24 @@ if __name__ == "__main__":
 
 	args = parser.parse_args()
 else:
-	class ArgumentParser():
-		def __init__(self,
-				seed=42,
-				data_path='data/yelp.csv',
-				train_percent=0.7,
-				valid_percent=0.2,
-				test_percent=0.1,
-				):
-			self.seed = seed
-			self.data_path = data_path
-			self.train_percent = train_percent
-			self.test_percent = test_percent
-			self.valid_percent = valid_percent
+	args = argparse.Namespace(
+			seed=42,
+			data_path='data/yelp.csv',
+			train_percent=0.7,
+			valid_percent=0.2,
+			test_percent=0.1,
 
-		def __str__(self):
-			return f"seed={self.seed}, train_percent={self.train_percent}, " +\
-				f"test_percent={self.test_percent}, valid_percent={self.valid_percent}"
+			# Model parameters
+			model_state_file='model.pth',
+			save_dir='models/',
 
-	args = ArgumentParser()
+			# Training HyperParameters
+			batch_size=128,
+			early_stopping_criteria=5,
+			learning_rate=0.001,
+			num_epochs=100,
+		)
+
 
 
 
