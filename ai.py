@@ -33,13 +33,13 @@ def make_train_state(args):
 			}
 
 def compute_accuracy(y_pred, target):
+	y_pred = torch.sigmoid(y_pred)
 	y_pred[y_pred < 0.5] = 0
 	y_pred[y_pred >= 0.5] = 1
 	accuracy = (y_pred == target).sum().float()/target.size()[0]
 	return accuracy.item()
 
 def train_model(classifier, dataset, loss_func, optimizer, args,):
-	
 	train_state = make_train_state(args)
 
 	for epoch_index in range(args.num_epochs):
@@ -95,3 +95,5 @@ def train_model(classifier, dataset, loss_func, optimizer, args,):
 
 		train_state['val_acc'].append(running_acc)
 		train_state['val_loss'].append(running_loss)
+	
+#def predict_rating(review_text, classifier, vectorizer, decision_threshold=0.5):
