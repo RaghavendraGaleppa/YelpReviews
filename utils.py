@@ -280,7 +280,7 @@ class ReviewDataset(Dataset):
 
 		self.set_split('train')
 
-	def get_vectorize(self):
+	def get_vectorizer(self):
 		return self._vectorizer
 
 	def set_split(self, split="train"):
@@ -321,7 +321,7 @@ def generate_batches(dataset, batch_size, shuffle=True, drop_last=True, device="
 
 	for data_dict in dataloader:
 		out_data_dict = {}
-		for name, tensor in data_dict:
+		for name, tensor in data_dict.items():
 			out_data_dict[name] = data_dict[name].to(device)
 
 		yield out_data_dict

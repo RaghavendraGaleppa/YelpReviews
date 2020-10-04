@@ -33,6 +33,45 @@ if __name__ == "__main__":
 			default=0.1,
 			)
 
+	parser.add_argument('-msf', '--model-state-file',
+			help="The path to the model state file",
+			default="model.pth",
+			)
+
+	parser.add_argument('-msd', '--model-save-dir',
+			help="The directory in which new models will be saved",
+			default="model/",
+			)
+
+	parser.add_argument('-bs', '--batch-size',
+			help="The batch to train on",
+			type=int,
+			default=128,
+			)
+
+	parser.add_argument('-esc', '--early-stopping-criteria',
+			help="When to early stop the training",
+			type=int,
+			default=5,
+			)
+
+	parser.add_argument('-lr', '--learning-rate',
+			help="The learning rate of the optimizer",
+			type=float,
+			default=0.001,
+			)
+
+	parser.add_argument('-ne', '--num-epochs',
+			help="The number of epochs to train on",
+			type=int,
+			default=100,
+			)
+
+	parser.add_argument('-d', '--device',
+			help="The device. It should be either cuda or cpu",
+			default=None,
+			)
+
 	args = parser.parse_args()
 else:
 	args = argparse.Namespace(
@@ -44,13 +83,13 @@ else:
 
 			# Model parameters
 			model_state_file='model.pth',
-			save_dir='models/',
+			model_save_dir='models/',
 
 			# Training HyperParameters
 			batch_size=128,
 			early_stopping_criteria=5,
 			learning_rate=0.001,
 			num_epochs=100,
-			device="cpu"
+			device=None,
 		)
 
