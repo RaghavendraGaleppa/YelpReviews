@@ -4,7 +4,6 @@ import torch.nn.functional as F
 
 from utils import generate_batches
 from tqdm import tqdm
-from sklearn.metrics import accuracy_score
 
 
 class ReviewClassifier(nn.Module):
@@ -36,8 +35,8 @@ def make_train_state(args):
 def compute_accuracy(y_pred, target):
 	y_pred[y_pred < 0.5] = 0
 	y_pred[y_pred >= 0.5] = 1
-	score = accuracy_score(y_pred.int(),target.int())
-	return score
+	accuracy = (y_pred == target).sum().float()/target.size()[0]
+	return accuracy.item()
 
 def train_model(classifier, dataset, loss_func, optimizer, args,):
 	
