@@ -174,8 +174,8 @@ class Vocabulary(object):
 			Return a serializable data structure, with essential components
 		"""
 		return {'token_to_idx':self._token_to_idx,
-				'add_unk': self._add_unk
-				'unk_token': self._unk_token
+				'add_unk': self._add_unk,
+				'unk_token': self._unk_token,
 				}
 
 	@classmethod

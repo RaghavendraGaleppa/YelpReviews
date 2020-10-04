@@ -105,6 +105,7 @@ def train_model(classifier, dataset, loss_func, optimizer, args,):
 		now = datetime.now()
 		file_path = os.path.join(args.model_save_dir,datetime.strftime(now, '%y%m%d_%H%M%S.pth'))
 		torch.save(classifier.state_dict(), file_path)
+		print(f"Model has been saved: {file_path}")
 		
 	
 def predict_rating(review_text, classifier, vectorizer, decision_threshold=0.5):
@@ -122,7 +123,8 @@ def predict_rating(review_text, classifier, vectorizer, decision_threshold=0.5):
 	"""
 	
 	review_text = preprocess_text(review_text)
-	review_vector = vectorizer.vectorize(review_text)
+	review_vector_np = vectorizer.vectorize(review_text)
+	review_vector = torch.from_numpy(review_vector_np)
 	result = torch.sigmoid(classifier(review_vector.view(1,-1)))
 	class_label = None	
 	if result.item() < decision_threshold:
@@ -130,5 +132,5 @@ def predict_rating(review_text, classifier, vectorizer, decision_threshold=0.5):
 	else:
 		class_label = 1
 		
-	return vectorizer.review_vocab.lookup_index(class_label)
+	return vectorizer.rating_vocab.lookup_index(class_label)
 

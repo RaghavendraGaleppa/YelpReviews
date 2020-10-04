@@ -3,6 +3,7 @@ import utils
 import os
 import pickle
 import sys
+import argparse
 from datetime import datetime
 
 import torch
@@ -121,10 +122,12 @@ else:
 			# Model parameters
 			model_state_file='model.pth',
 			model_save_dir='models/',
+			save_model=False,
 
 			# Vectorizer
 			vectorizer_file='vectorizer.vec',
 			vectorizer_save_dir='vectorizer/',
+			save_vectorizer=False,
 
 			# Training HyperParameters
 			batch_size=128,
@@ -134,18 +137,30 @@ else:
 			device=None,
 		)
 
+if args.train:
+	print(f"Training Mode")
+	print(f"="*40)
+
+else:
+	print(f"Inference Mode")
+	print(f"="*40)
+	print("\n")
+	args.review = " ".join(args.review)
+	print(f"Text: {args.review}")
+
 
 if args.device is None:
 	if torch.cuda.is_available():
 		args.device = "cuda"
-		print(f"Training on GPU")
+		print(f"Using GPU")
 	else:
 		args.device = "cpu"
-		print(f"Training on CPU")
+		print(f"Using CPU")
 
 # Dataset and Vectorizer
 dataset = utils.ReviewDataset.create_and_make_dataset(args)
 vectorizer = dataset.get_vectorizer()
+
 
 # Save the vectorizer if flag is given
 if args.save_vectorizer:
@@ -156,6 +171,7 @@ if args.save_vectorizer:
 	file_path = os.path.join(args.vectorizer_save_dir,datetime.strftime(now, '%y%m%d_%H%M%S.vec'))
 	file_ = open(file_path, 'ab')
 	pickle.dump(serializer, file_)
+	print(f"Vectorizer saved: {file_path}")
 	
 
 # model
@@ -163,7 +179,7 @@ classifier = ai.ReviewClassifier(num_features=len(vectorizer.review_vocab))
 classifier = classifier.to(args.device)
 # Load the model for inference mode
 if not args.train:
-	classifier.load_state_dict(args.model_state_file)
+	classifier.load_state_dict(torch.load(args.model_state_file))
 
 # loss function and optimizer
 loss_func = nn.BCEWithLogitsLoss()
@@ -173,5 +189,5 @@ if args.train:
 	ai.train_model(classifier, dataset, loss_func, optimizer, args)
 else: # Inference mode
 	review_text = args.review
-	out = predict_rating(review_text, classifier, vectorizer, decision_threshold=0.5)
+	out = ai.predict_rating(review_text, classifier, vectorizer, decision_threshold=0.5)
 	print(f"{review_text} --> {out}")
