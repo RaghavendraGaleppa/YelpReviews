@@ -92,10 +92,7 @@ class Vocabulary(object):
 		dataset.
 	"""
 
-	def __init__(self, token_to_idx=None,
-			add_unk=True,
-			unk_token="<UNK>",
-			):
+	def __init__(self, token_to_idx=None, add_unk=True, unk_token="<UNK>",):
 		"""
 			- token_to_idx: a pre-existing mapping of token to idx.
 			- add_unk: whether the unknow token id should be added to the vocabulary
@@ -172,12 +169,30 @@ class Vocabulary(object):
 			raise ValueError(f"The index {index} is not present in the Vocabulary.")
 		return self._idx_to_token[index]
 
+	def to_serializer(self):
+		"""
+			Return a serializable data structure, with essential components
+		"""
+		return {'token_to_idx':self._token_to_idx,
+				'add_unk': self._add_unk
+				'unk_token': self._unk_token
+				}
+
+	@classmethod
+	def from_serializer(cls, contents):
+		"""
+			- Create and initialize a class with the contents
+			returns:
+				object(Vocabulary): The Vocabulary that has been initialized
+		"""
+		return cls(**contents)
+
+
 	def __str__(self):
 		return f"<Vocabulary(size={len(self)})>"
 
 	def __len__(self):
 		return len(self._token_to_idx)
-
 
 class Vectorizer(object):
 	"""
@@ -201,7 +216,6 @@ class Vectorizer(object):
 		self.review_vocab = review_vocab
 		self.rating_vocab = rating_vocab
 
-
 	def vectorize(self,review):
 		"""
 			- Given a token, convert it into its one-hot encoding form
@@ -217,7 +231,6 @@ class Vectorizer(object):
 				index = self.review_vocab.lookup_token(token)
 				vector[index] = 1
 		return vector
-
 
 	@classmethod
 	def from_dataframe(cls, review_df, cutoff=25):
@@ -251,6 +264,17 @@ class Vectorizer(object):
 				index = review_vocab.add_token(token)
 
 		return cls(review_vocab, rating_vocab)
+
+	def to_serializer(self):
+		return {'review_vocab': self.review_vocab.to_serializer(),
+				'rating_vocab': self.rating_vocab.to_serializer(),
+				}
+	
+	@classmethod
+	def from_serializer(cls, contents):
+		review_vocab = Vocabulary.from_serializer(contents['review_vocab'])
+		rating_vocab = Vocabulary.from_serializer(contents['rating_vocab'])
+		return cls(review_vocab=review_vocab, rating_vocab=rating_vocab)
 
 class ReviewDataset(Dataset):
 	def __init__(self, review_df, vectorizer):

@@ -3,8 +3,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from utils import generate_batches
+from utils import preprocess_text
 from tqdm import tqdm
-
+from datetime import datetime
+import os
 
 class ReviewClassifier(nn.Module):
 	"""
@@ -95,5 +97,38 @@ def train_model(classifier, dataset, loss_func, optimizer, args,):
 
 		train_state['val_acc'].append(running_acc)
 		train_state['val_loss'].append(running_loss)
+
+	if args.save_model:
+		if not os.path.isdir(args.model_save_dir):
+			os.makedirs(args.model_save_dir)
+
+		now = datetime.now()
+		file_path = os.path.join(args.model_save_dir,datetime.strftime(now, '%y%m%d_%H%M%S.pth'))
+		torch.save(classifier.state_dict(), file_path)
+		
 	
-#def predict_rating(review_text, classifier, vectorizer, decision_threshold=0.5):
+def predict_rating(review_text, classifier, vectorizer, decision_threshold=0.5):
+	"""
+		- Given the classifier, vectorizer and text, classify whether that text is a positive or
+		negative review
+
+		args:
+			review_text(str): The review that needs to be classified
+			classifier(ReviewClassifier): The model that has been trained for classification
+			vectorizer(utils.Vectorizer): The Vectorizer that will be used to convert the text to a vector
+		returns:
+			class(str): The class, which is either positive or negative
+			
+	"""
+	
+	review_text = preprocess_text(review_text)
+	review_vector = vectorizer.vectorize(review_text)
+	result = torch.sigmoid(classifier(review_vector.view(1,-1)))
+	class_label = None	
+	if result.item() < decision_threshold:
+		class_label = 0
+	else:
+		class_label = 1
+		
+	return vectorizer.review_vocab.lookup_index(class_label)
+
